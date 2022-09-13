@@ -1,6 +1,6 @@
 import os
 
-from music21 import converter
+from music21 import converter, key, stream, meter
 
 from config import EXTENSION
 
@@ -25,7 +25,34 @@ class MusicLoader:
         pre_offset = 0
 
         for elem in self.part(score).flat:
-            pass
+            if isinstance(elem, key.KeySignature) or isinstance(elem, key.Key):
+                if ks is not None:
+                    scores.append(stream.Stream(score_part))
+                    ks = elem
+                    pre_offset = ks.offset
+                    ks.offset = 0
+                    new_ts = meter.TimeSignature(ts.ratioString)
+                    score_part = [ks, new_ts]
+
+                else:
+                    ks = elem
+                    score_part.append(ks)
+
+                # If is time signature
+            elif isinstance(elem, meter.TimeSignature):
+
+                elem.offset -= pre_offset
+                ts = elem
+                score_part.append(elem)
+
+            else:
+
+                elem.offset -= pre_offset
+                score_part.append(elem)
+
+        scores.append(stream.Stream(score_part))
+
+        return scores
 
     def load_music(self):
         for dirpath, dirlist, filenames in os.walk(self.dataset_path):
@@ -38,3 +65,8 @@ class MusicLoader:
                 full_filename = os.path.join(dirpath, cur_file)
 
                 score = converter.parse(full_filename)
+
+                scores = self.key_split(score)
+                print(scores)
+                break
+            break
